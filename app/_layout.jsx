@@ -4,7 +4,7 @@ import { Stack } from 'expo-router'
 import { useFonts } from "expo-font";
 import { useEffect } from "react";
 import { SplashScreen} from "expo-router";
-
+import GlobalProvider from '../context/GlobalProvider'
 SplashScreen.preventAutoHideAsync();
 
 const RootLayout = () => {
@@ -37,12 +37,15 @@ const RootLayout = () => {
       }
 
   return (
+    <GlobalProvider>
     <Stack>
         <Stack.Screen name="index" options={{headerShown: false }}></Stack.Screen>
+        <Stack.Screen name="cerrarsesion" options={{headerShown: false }}></Stack.Screen>
         <Stack.Screen name="(auth)" options={{headerShown: false }}></Stack.Screen>
         <Stack.Screen name="(tabs)" options={{headerShown: false }}></Stack.Screen>
         <Stack.Screen name="[query]" options={{headerShown: false }}></Stack.Screen>
     </Stack>
+    </GlobalProvider>
     
   )
 }
