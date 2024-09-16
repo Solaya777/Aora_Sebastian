@@ -1,20 +1,24 @@
-import { useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { FlatList, Image, RefreshControl, Text, View } from "react-native";
-
+import React, { useState } from "react";
+import { SafeAreaView, Modal, View, Button, StyleSheet } from "react-native";
+import { FlatList, Image, RefreshControl, Text } from "react-native";
 import { images } from "../../constants";
 import useAppwrite from "../../lib/useAppwrite";
 import { getAllPosts, getLatestPosts } from "../../lib/appwrite";
-import {EmptyState} from "../../components/EmptyState"
-import {SearchInput} from "../../components/SearchInput"
-import {Trending} from "../../components/Trending"
-import {VideoCard} from "../../components/VideoCard"
+import { EmptyState } from "../../components/EmptyState";
+import { SearchInput } from "../../components/SearchInput";
+import { Trending } from "../../components/Trending";
+import { VideoCard } from "../../components/VideoCard";
+import ReviewForm from "../../components/ReviewForm";
+import ReviewList from "../../components/ReviewList";
 
 const Home = () => {
   const { data: posts, refetch } = useAppwrite(getAllPosts);
   const { data: latestPosts } = useAppwrite(getLatestPosts);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [reviews, setReviews] = useState({}); // Reviews will be stored by video ID
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -22,54 +26,59 @@ const Home = () => {
     setRefreshing(false);
   };
 
-  // one flatlist
-  // with list header
-  // and horizontal flatlist
+  const handleReviewSubmit = (videoId, review) => {
+    setReviews(prevReviews => ({
+      ...prevReviews,
+      [videoId]: [...(prevReviews[videoId] || []), review]
+    }));
+    setModalVisible(false);
+    setSelectedVideo(null);
+  };
 
-  //  we cannot do that with just scrollview as there's both horizontal and vertical scroll (two flat lists, within trending)
+  const openReviewModal = (videoId) => {
+    setSelectedVideo(videoId);
+    setModalVisible(true);
+  };
 
   return (
-    <SafeAreaView className="bg-primary">
+    <SafeAreaView style={styles.container}>
       <FlatList
         data={posts}
         keyExtractor={(item) => item.$id}
         renderItem={({ item }) => (
-          <VideoCard
-            title={item.title}
-            thumbnail={item.thumbnail}
-            video={item.video}
-            creator={item.creator.username}
-            avatar={item.creator.avatar}
-          />
+          <View>
+            <VideoCard
+              title={item.title}
+              thumbnail={item.thumbnail}
+              video={item.video}
+              creator={item.creator.username}
+              avatar={item.creator.avatar}
+            />
+            <Button
+              title="Add Review"
+              onPress={() => openReviewModal(item.$id)}
+            />
+            <ReviewList reviews={reviews[item.$id] || []} />
+          </View>
         )}
         ListHeaderComponent={() => (
-          <View className="flex my-6 px-4 space-y-6">
-            <View className="flex justify-between items-start flex-row mb-6">
+          <View style={styles.headerContainer}>
+            <View style={styles.header}>
               <View>
-                <Text className="font-pmedium text-sm text-gray-100">
-                  Welcome Back
-                </Text>
-                <Text className="text-2xl font-psemibold text-white">
-                  JSMastery
-                </Text>
+                <Text style={styles.welcomeText}>Welcome Back</Text>
+                <Text style={styles.titleText}>JSMastery</Text>
               </View>
-
-              <View className="mt-1.5">
+              <View style={styles.logoContainer}>
                 <Image
                   source={images.logoSmall}
-                  className="w-9 h-10"
+                  style={styles.logo}
                   resizeMode="contain"
                 />
               </View>
             </View>
-
             <SearchInput />
-
-            <View className="w-full flex-1 pt-5 pb-8">
-              <Text className="text-lg font-pregular text-gray-100 mb-3">
-                Latest Videos
-              </Text>
-
+            <View style={styles.latestVideosContainer}>
+              <Text style={styles.latestVideosTitle}>Latest Videos</Text>
               <Trending posts={latestPosts ?? []} />
             </View>
           </View>
@@ -84,8 +93,84 @@ const Home = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       />
+
+      {selectedVideo && (
+        <Modal
+          visible={modalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalBackground}>
+            <View style={styles.modalContainer}>
+              <ReviewForm
+                onSubmit={(review) => handleReviewSubmit(selectedVideo, review)}
+              />
+              <Button
+                title="Close"
+                onPress={() => setModalVisible(false)}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1f1f1f',
+  },
+  headerContainer: {
+    flex: 1,
+    marginVertical: 24,
+    paddingHorizontal: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: '#f4f4f4',
+  },
+  titleText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  logoContainer: {
+    marginTop: 6,
+  },
+  logo: {
+    width: 36,
+    height: 36,
+  },
+  latestVideosContainer: {
+    paddingTop: 20,
+    paddingBottom: 32,
+  },
+  latestVideosTitle: {
+    fontSize: 18,
+    color: '#f4f4f4',
+    marginBottom: 12,
+  },
+  modalBackground: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContainer: {
+    width: '80%',
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+  },
+});
 
 export default Home;
